@@ -1,0 +1,96 @@
+#Code written for analyzing lunar activity patterns and Coefficients of Overlapping for felid predators and their prey
+
+#Directions for Manipulating Code:
+#If changing number of bootstraps: change line 82 
+#If changing which tests are run: comment out call to functions in overall function (in Functions for Lunar Code file) that binds test outputs in overall function (statistics <- cbind())
+#If generating plot, file saves into working directory. can change in Functions Lunar Code file
+
+
+#data structure -columns needed:
+#Species: latin name for species
+#Common: common name for species
+#Date: date of observation in format %m/%d/%Y
+#Time: time of record in decimal format
+#Independent: with designations  as "Yes" for observations of the same species at the same camera within 30 minutes or "No" for non-independent data
+
+
+#species names printed after each pair done so progress can be tracked
+
+library(data.table)
+library(overlap)
+library(suncalc)
+
+#data cleaning and conversion----  
+ind.data <- read.csv("~/College/Mooring Research/2019/Data Files/New Database/DATABASE CURRENT (9-13-19) Cleaned.csv", stringsAsFactors = FALSE)
+
+ind.data <- subset(ind.data, ind.data["Independent"] ==  "Yes")# remove data of same species at same camera within 30 minutes (designated independent or not in Camera Base (Tobler, 2015))
+
+ind.data <- subset(ind.data, ind.data$Species != "Unknown")
+ind.data <- subset(ind.data, ind.data$Species != "unknown")
+ind.data <- subset(ind.data, ind.data$Species != "")
+
+ind.data <- subset(ind.data, ind.data$Time < 0.25 | ind.data$Time >= 0.75) #rough approximation of "only use nighttime data" so that between 6:00 and 18:00
+
+
+ind.data["Date"] <- as.Date(ind.data$Date, "%m/%d/%Y") 
+
+ind.data["Lunar"] <- (getMoonIllumination(ind.data$Date, "phase")[,2])*2*pi #calculates lunar phase and converts to radians
+
+
+
+
+
+#Creates pairs: in this includes all species recorded, better for efficiency to run selected pairs identifed as informative ----
+
+nametable <- table(ind.data$Species)
+print("These names were removed because sample size less than or equal to 15")
+print(list(names(nametable[nametable<=15])))
+nametable <- nametable[nametable > 15]  #Removes any species with a sample size less than or equal 15, prints out names above
+namelist <- names(nametable)
+namelist <- array(namelist,dim=c(length(namelist),1))
+
+pairs<-cbind(animal1=rep(namelist[,1], each = length(namelist)), animal2=rep(namelist[,1], times=length(namelist)))
+
+#Removes duplicates and doubles (ex: Puma vs Puma) ----
+remove<-seq(from=1,to=length(pairs[,1]),by=length(predator))
+for (i in remove)
+{
+  if (i!=1)
+  {
+    times=(i-1)/length(predator) #Number of pairs to be deleted (pattern of pair formation is that all pairs above the double (puma vs puma) are repeats)
+    m=0
+    repeat
+    {
+      m=m+1
+      n=i+m #index of pair that is duplicate
+      remove<-c(remove,n)
+      if(m==times) #stops when adds all duplicates and doubles for that species to remove
+      {
+        break
+      }
+    }
+  }
+}
+
+pairs<-pairs[-remove,]
+
+
+
+
+#apply function ----
+numboot = 1000 #number of repetitions for calculation of confidence interval, W statistic p-value, chi square p-value
+
+statistics<-apply(pairs, 1, function(pair)
+{
+  overall(pair, numboot)
+}
+)
+
+print("stats done")
+statistics<-rbindlist(statistics)
+
+statistics<-statistics[,c(1,3,2,4,5:12)] #Reorders so sample size follows corresponding species
+
+statisticsrev <- statistics1[,c(3,4,1,2,5:12)]#reorders columns so that have all duplicate pairs (animal2 vs animal1 AND animal1 vs animal2)
+colnames(statisticsrev)[c(1,3)] <- c("animalname1","animalname2")
+statistics <- rbind(statistics, statisticsrev)
