@@ -3,8 +3,7 @@ library(suncalc)
 library(circular)
 
 #functions
-pvalueRAO <- function(U){
-#adapted from print.rao.spacing.test function to access p-value range (Agostinelli, 2007) in package Circular (2017)
+pvalueRAO <- function(U,n){
   if (n <= 30)
     table.row <- n - 3
   else if (n <= 32)
@@ -63,27 +62,29 @@ ind.data <- subset(ind.data, ind.data$Species != "Unknown")
 ind.data <- subset(ind.data, ind.data$Species != "unknown")
 ind.data <- subset(ind.data, ind.data$Species != "")
 ind.data <- subset(ind.data, ind.data$Time < 0.25 | ind.data$Time >= 0.75) #rough approximation of "only use nighttime data"
+ind.data[ind.data$Species=="Didelphis marsupalis","Species"] <- "Didelphis marsupialis"
+ind.data[ind.data$Species=="Pecari Tajacu","Species"] <- "Pecari tajacu"
 
 ind.data["Date"] <- as.Date(ind.data$Date, "%m/%d/%Y")
 
-ind.data["Lunar"] <- (getMoonIllumination(ind.data$Date, "phase")[,2])*2*pi #calculates lunar phase and converts to radians
+ind.data["Lunar"] <- (getMoonIllumination(ind.data$Date, "phase")[,2])*2*pi
 
-data(rao.table) #imports rao statistic table from circular package
+data(rao.table)
 
 rao.stats <- rbindlist(lapply(names(table(ind.data$Species)), FUN=function(species){
-  r <- rao.spacing.test(circular(ind.data[ind.data$Species==species,"Lunar"], units="radians"),alpha=0)$statistic #calculates rao statistic
-  
+  r <- rao.spacing.test(circular(ind.data[ind.data$Species==species,"Lunar"], units="radians"),alpha=0)$statistic
+  n <- length(ind.data[ind.data$Species==species,"Lunar"])
   if(is.na(r)){
    p.value = "Sample Size too small"
   }
-  else p.value <- pvalueRAO(r)
+  else p.value <- pvalueRAO(r,n)
   
   return(
     data.frame(
       speciesName = species,
+      n=n,
       raoStat = r,
       pValue = p.value
     )
   )
 }))
-
