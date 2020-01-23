@@ -1,0 +1,27 @@
+
+library(data.table)
+library(suncalc)
+
+#Corrects DataSet ----  
+ind.data <- subset(ind.data, ind.data["Independent"] ==  "Yes")
+ind.data <- subset(ind.data, ind.data$Species != "Unknown")
+ind.data <- subset(ind.data, ind.data$Species != "unknown")
+ind.data <- subset(ind.data, ind.data$Species != "")
+
+ind.data <- subset(ind.data, ind.data$Time < 0.25 | ind.data$Time >= 0.75) #rough approximation of "only use nighttime data"
+ind.data["Date"] <- as.Date(ind.data$Date, "%m/%d/%Y")
+ind.data["Lunar"] <- (getMoonIllumination(ind.data$Date, "phase")[,2])*2*pi #calculates lunar phase in radians
+
+ind.data["LunarPhase"] <- ifelse(ind.data$Lunar<pi/4,"NM", ifelse(ind.data$Lunar>(7*pi)/4,"NM", ifelse(ind.data$Lunar>pi/4 & ind.data$Lunar<(3*pi)/4,"FQ",ifelse(ind.data$Lunar>(3*pi)/4 & ind.data$Lunar<(5*pi)/4,"FM", ifelse(ind.data$Lunar>(5*pi)/4 & ind.data$Lunar<(7*pi)/4, "SQ",NA))))) #designates lunar phase, cut into 4 equal quadrants centered around the radian associated with the corresponding phase (ie First Quarter at pi/2 so center of pi/4 and 3pi/4)
+
+tableLP <- as.data.table(table(ind.data$Species,ind.data$LunarPhase))
+tableLP <- dcast(tableLP, V1~V2) #restructures table so lunar phase designation as column name rather than row value
+tableLP1 <- cbind(tableLP, as.data.frame(rowSums(tableLP[,2:5])))#adds column with sum for each species
+colnames(tableLP)[1] <- "Species"
+colnames(tableLP)[6] <- "Sum
+"
+#calculates percent for each lunar phase designation
+tableLP$FMPerc <- round((tableLP$FM/tableLP$Sum)*100,digits = 3) 
+tableLP$FQPerc <- round((tableLP$FQ/tableLP$Sum)*100, digits = 3)
+tableLP$NMPerc <- round((tableLP$NM/tableLP$Sum)*100, digits = 3)
+tableLP$SQPerc <- round((tableLP$SQ/tableLP$Sum)*100, digits = 3)
