@@ -62,8 +62,6 @@ ind.data <- subset(ind.data, ind.data$Species != "Unknown")
 ind.data <- subset(ind.data, ind.data$Species != "unknown")
 ind.data <- subset(ind.data, ind.data$Species != "")
 ind.data <- subset(ind.data, ind.data$Time < 0.25 | ind.data$Time >= 0.75) #rough approximation of "only use nighttime data"
-ind.data[ind.data$Species=="Didelphis marsupalis","Species"] <- "Didelphis marsupialis"
-ind.data[ind.data$Species=="Pecari Tajacu","Species"] <- "Pecari tajacu"
 
 ind.data["Date"] <- as.Date(ind.data$Date, "%m/%d/%Y")
 
