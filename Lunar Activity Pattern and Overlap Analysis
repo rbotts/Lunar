@@ -21,8 +21,6 @@ library(overlap)
 library(suncalc)
 
 #data cleaning and conversion----  
-ind.data <- read.csv("~/College/Mooring Research/2019/Data Files/New Database/DATABASE CURRENT (9-13-19) Cleaned.csv", stringsAsFactors = FALSE)
-
 ind.data <- subset(ind.data, ind.data["Independent"] ==  "Yes")# remove data of same species at same camera within 30 minutes (designated independent or not in Camera Base (Tobler, 2015))
 
 ind.data <- subset(ind.data, ind.data$Species != "Unknown")
