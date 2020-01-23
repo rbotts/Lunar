@@ -1,0 +1,89 @@
+library(data.table)
+library(suncalc)
+library(circular)
+
+#functions
+pvalueRAO <- function(U){
+#adapted from print.rao.spacing.test function to access p-value range (Agostinelli, 2007) in package Circular (2017)
+  if (n <= 30)
+    table.row <- n - 3
+  else if (n <= 32)
+    table.row <- 27
+  else if (n <= 37)
+    table.row <- 28
+  else if (n <= 42)
+    table.row <- 29
+  else if (n <= 47)
+    table.row <- 30
+  else if (n <= 62)
+    table.row <- 31
+  else if (n <= 87)
+    table.row <- 32
+  else if (n <= 125)
+    table.row <- 33
+  else if (n <= 175)
+    table.row <- 34
+  else if (n <= 250)
+    table.row <- 35
+  else if (n <= 350)
+    table.row <- 36
+  else if (n <= 450)
+    table.row <- 37
+  else if (n <= 550)
+    table.row <- 38
+  else if (n <= 650)
+    table.row <- 39
+  else if (n <= 750)
+    table.row <- 40
+  else if (n <= 850)
+    table.row <- 41
+  else if (n <= 950)
+    table.row <- 42
+  else table.row <- 43
+  
+  #designate p-value
+  if (is.na(U))
+    p <- "Sample Size too small"
+  else if (U > rao.table[table.row, 1])
+    p <- "P-value < 0.001"
+  else if (U > rao.table[table.row, 2])
+    p <- "0.001 < P-value < 0.01"
+  else if (U > rao.table[table.row, 3])
+    p <- "0.01 < P-value < 0.05"
+  else if (U > rao.table[table.row, 4])
+    p <- "0.05 < P-value < 0.10"
+  else p <- "P-value > 0.10"
+  
+  return(p)
+}
+
+#cleaning data
+ind.data <- subset(ind.data, ind.data["Independent"] ==  "Yes")
+ind.data <- subset(ind.data, ind.data$Species != "Unknown")
+ind.data <- subset(ind.data, ind.data$Species != "unknown")
+ind.data <- subset(ind.data, ind.data$Species != "")
+ind.data <- subset(ind.data, ind.data$Time < 0.25 | ind.data$Time >= 0.75) #rough approximation of "only use nighttime data"
+
+ind.data["Date"] <- as.Date(ind.data$Date, "%m/%d/%Y")
+
+ind.data["Lunar"] <- (getMoonIllumination(ind.data$Date, "phase")[,2])*2*pi #calculates lunar phase and converts to radians
+
+data(rao.table) #imports rao statistic table from circular package
+
+rao.stats <- rbindlist(lapply(names(table(ind.data$Species)), FUN=function(species){
+  r <- rao.spacing.test(circular(ind.data[ind.data$Species==species,"Lunar"], units="radians"),alpha=0)$statistic #calculates rao statistic
+  
+  if(is.na(r)){
+   p.value = "Sample Size too small"
+  }
+  else p.value <- pvalueRAO(r)
+  
+  return(
+    data.frame(
+      speciesName = species,
+      raoStat = r,
+      pValue = p.value
+    )
+  )
+}))
+
